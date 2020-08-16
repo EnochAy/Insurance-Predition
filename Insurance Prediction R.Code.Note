@@ -1,0 +1,624 @@
+#Zindi Project from DSN ML Open Competition
+##Data Science Nigeria 2019 Challenge #1: Insurance Prediction
+###Description of the challenge:
+
+#Recently, there has been an increase in the number of building collapse in Lagos and major cities
+#in Nigeria. Olusola Insurance Company offers a building insurance policy that protects buildings
+#against damages that could be caused by a FIRE or VANDALISM, by a FLOOD or STORM.
+
+##You have been appointed as the Lead Data Analyst to BUILD a PREDICTIVE MODEL to determine
+##if a building will have an INSURANCE CLAIM during a certain period or NOT. You will have to
+##PREDICT THE PROBABILITY of having AT LEAST ONE CLAIM OVER THE INSURED PERIOD of the building.
+#Most categorical data like Building_Painted, Building_Fenced, Garden, Settlement are
+#converted using map encoding to 0 and 1.
+
+##THE MODEL WILL BE BASED ON THE BUILDING CHARACTERISTICS, which includes:
+##NumberOfWindows,  Building.Dimension, Building_Painted, Building_Fenced, Garden.
+##The target variable, Claim, is a:
+#1 if the building has at least a claim over the insured period.
+#0 if the building doesn't have a claim over the insured period.
+
+#Predictor Variables: Insured_Period, NumberOfWindows,  Building.Dimension, Building_Painted,
+#Building_Fenced, Garden.
+#Target Variable: Claim (At least one claim:1, No claim:0)
+#
+#Logistic Regression(LR) Algorithm (A Type of Classification algorithm under the Supervised
+#Learning type of ML)
+#LR returns binary result unlike in statistics where regression implies continuous values. The
+#algorithm measures the relationship between features are weighted and impact the result
+#(1 and 0; in this case, 1, if the building has at least one claim over the insured period
+#or 0, if the building doesn't have a claim over the insured period, no claim)
+
+
+
+#install packages - do this one time
+install.packages("data.table")
+install.packages("corrplot")
+install.packages("ggplot2")
+install.packages("ggplot")
+install.packages("gcookbook")
+install.packages("caret")
+install.packages("hexbin")
+install.packages("leaps")
+install.packages("plyr")
+install.packages("plotly")
+install.packages("waffle")
+install.packages("dummies")
+install.packages("caTools")
+install.packages("wesanderson")
+install.packages("visreg")
+install.packages("car")
+install.packages("leaps")
+install.packages("MASS")
+install.packages("corrplot")
+# Load the relevant libraries - do this every time
+library(data.table)
+library(corrplot)
+library(ggplot2)
+library (gcookbook)
+library(caret)
+library(hexbin)
+library(leaps)
+library(plyr)
+library(plotly)
+library(waffle)
+library(dummies)
+library(caTools)
+library(wesanderson)
+library(visreg)
+library(car)
+library(rpart)
+library(leaps)
+library(MASS)
+library(skimr)
+library(corrplot)
+library(gmodels)
+
+#Load train_data and test_data
+library(readr)
+train <- read.csv("C:/Users/Hp/Desktop/Data Science Projects/Personal Project Final Submission Documents/train_data.csv",
+                  stringsAsFactors = TRUE, header = TRUE)
+test <- read.csv("C:/Users/Hp/Desktop/Data Science Projects/Personal Project Final Submission Documents/test_data.csv",
+  stringsAsFactors = TRUE, header = TRUE)
+#Keep the Customer.Id for later use
+Submission.Id <- test$Customer.Id
+
+#This line of code separates the train from test dataset by adding 'Train' and 'Test'
+#columns ('key') to the two data sets respectively.
+train$key <- "Train"
+test$key <- "Test"
+#Part One: Problem Definition and Forming Solution Statement.
+
+##Zindi Project from DSN ML Open Competition
+##Data Science Nigeria 2019 Challenge #1: Insurance Prediction
+###Description of the challenge:
+
+#Recently, there has been an increase in the number of building collapse in Lagos and major cities
+#in Nigeria. Olusola Insurance Company offers a building insurance policy that protects buildings
+#against damages that could be caused by a FIRE or VANDALISM, by a FLOOD or STORM.
+
+##You have been appointed as the Lead Data Analyst to BUILD a PREDICTIVE MODEL to determine
+##if a building will have an INSURANCE CLAIM during a certain period or NOT. You will have to
+##PREDICT THE PROBABILITY of having AT LEAST ONE CLAIM OVER THE INSURED PERIOD of the building.
+#Most categorical data like Building_Painted, Building_Fenced, Garden, Settlement are
+#converted using map encoding to 0 and 1.
+
+##THE MODEL WILL BE BASED ON THE BUILDING CHARACTERISTICS, which includes:
+##NumberOfWindows,  Building.Dimension, Building_Painted, Building_Fenced, Garden.
+##The target variable, Claim, is a:
+#1 if the building has at least a claim over the insured period.
+#0 if the building doesn't have a claim over the insured period.
+
+#Predictor Variables: Insured_Period, NumberOfWindows,  Building.Dimension, Building_Painted,
+#Building_Fenced, Garden.
+#Target Variable: Claim (At least one claim:1, No claim:0)
+#
+#Logistic Regression(LR) Algorithm (A Type of Classification algorithm under the Supervised
+#Learning type of ML)
+#LR returns binary result unlike in statistics where regression implies continuous values. The
+#algorithm measures the relationship between features are weighted and impact the result
+#(1 and 0; in this case, 1, if the building has at least one claim over the insured period
+#or 0, if the building doesn't have a claim over the insured period, no claim)
+
+
+#Part 2: Colllecing, Preparing and Cleaning Data.
+#Makinf full data
+library(dplyr)
+full <- full_join(test, train) #Joined by columns OR
+full <- bind_rows(train, test) #Join by rows == bind_rows(Test, train)
+save(list = c("test","train", "full", "Submission.Id"),file = "full.Rdata")#saving train and test data as full_data
+data(full.Rdata)
+
+#INITIAL EXPLORATORY DATA ANALYSIS FOR BETTER UNDERSTANDING OF THE DATA
+#attach allows us to reference columns by their name
+attach(full)
+#Initail EDA
+head(full)
+tail(full)
+dim(full)
+summary(full)
+library(skimr)
+skim(full) # Descriptive statistics of dataset
+#Exploring data structure
+str(full)#10229 obs. (records or examples: customers, n = 1000) of  14 variables(features)
+names(full) #listing the names of variables/features/columns
+sapply(full, class) #Data types of each variable or attribute
+library(dplyr)
+glimpse(full)
+
+#Data Pre-processing:
+#A. Class Labelling (grouping data into numeric and categorical data)
+#Creating numeric variables
+full_num <- subset(full, select = -c(Customer.Id, Building_Painted, Building_Fenced, Settlement,
+                                     NumberOfWindows, Geo_Code))#Subsetting numeric variables
+#Creating categorical variables
+full_cat <- subset(full, select = c(Customer.Id, Building_Painted, Building_Fenced, Settlement,
+                                   Garden, NumberOfWindows, Geo_Code, key))
+#B. Data Cleaning, Data Cleansing/Scrubbing: Dealing with inconsistent data
+#E.g missing values, inconsistent data types
+#Converting variables type such that R and algorithms could easily work on them
+#as.numeric, as.string functions could be use to change back to formal type if necessary.
+full$NumberOfWindows <- as.integer(full$NumberOfWindows)
+full$Geo_Code <- as.integer(full$Geo_Code)
+full$Insured_Period <- as.integer(full$Insured_Period)
+full$Building_Painted <- as.factor(full$Building_Painted)
+full$Building_Fenced <- as.factor(full$Building_Fenced)
+full$Garden <- as.factor(full$Garden)
+full$Settlement <- as.factor(full$Settlement)
+full$Claim <- as.factor(full$Claim)
+#Encode numeric factors with two levels
+#Full data
+full["Building_Painted"] <- lapply(full["Building_Painted"], factor,
+                                        levels = c("N", "V"), label = c(1,0))
+
+full["Building_Fenced"] <- lapply(full["Building_Fenced"], factor,
+                                       levels = c("N", "V"), label = c(1,0))
+full["Garden"] <- lapply(full["Garden"], factor, levels = c("V", "O"), label = c(1,0))
+
+full["Settlement"] <- lapply(full["Settlement"], factor, levels = c("R", "U"),
+                                  label = c(1,0))
+#full["Claim"] <- lapply(full["Claim"], factor, levels = c(0, 1))
+
+#Train Data
+#Encode numeric factors with two levels
+train["Building_Painted"] <- lapply(train["Building_Painted"], factor,
+                                   levels = c("N", "V"), label = c(1,0))
+
+train["Building_Fenced"] <- lapply(train["Building_Fenced"], factor,
+                                  levels = c("N", "V"), label = c(1,0))
+train["Garden"] <- lapply(train["Garden"], factor, levels = c("V", "O"), label = c(1,0))
+
+train["Settlement"] <- lapply(train["Settlement"], factor, levels = c("R", "U"),
+                             label = c(1,0))
+#full["Claim"] <- lapply(full["Claim"], factor, levels = c(0, 1))
+
+#Test Data
+#Encode numeric factors with two levels
+test["Building_Painted"] <- lapply(test["Building_Painted"], factor,
+                                   levels = c("N", "V"), label = c(1,0))
+
+test["Building_Fenced"] <- lapply(test["Building_Fenced"], factor,
+                                  levels = c("N", "V"), label = c(1,0))
+test["Garden"] <- lapply(test["Garden"], factor, levels = c("V", "O"), label = c(1,0))
+
+test["Settlement"] <- lapply(test["Settlement"], factor, levels = c("R", "U"),
+                             label = c(1,0))
+#full["Claim"] <- lapply(full["Claim"], factor, levels = c(0, 1))
+#Full_cat
+full_cat["Building_Painted"] <- lapply(full_cat["Building_Painted"], factor,
+                                   levels = c("N", "V"), label = c(1,0))
+
+full_cat["Building_Fenced"] <- lapply(full_cat["Building_Fenced"], factor,
+                                  levels = c("N", "V"), label = c(1,0))
+full_cat["Garden"] <- lapply(full_cat["Garden"], factor, levels = c("V", "O"), label = c(1,0))
+
+full_cat["Settlement"] <- lapply(full_cat["Settlement"], factor, levels = c("R", "U"),
+                             label = c(1,0))
+#full["Claim"] <- lapply(full["Claim"], factor, levels = c(0, 1))
+#full_num
+full_num["Garden"] <- lapply(full_num["Garden"], factor, levels = c("V", "O"), label = c(1,0))
+
+#full["Claim"] <- lapply(full["Claim"], factor, levels = c(0, 1))
+
+#before transformation
+hist(full$Insured_Period)#skewed to the left (negatively skewed)
+is.na(full) #Checking for missing values
+#I define the function `missing_vars`,
+#which I can use to get an overview of what proportion of each variable is #missing,and re-use.
+missing_vars <- function(x) {
+  var <- 0
+  missing <- 0
+  missing_prop <- 0
+  for (i in 1:length(names(x))) {
+    var[i] <- names(x)[i]
+    missing[i] <- sum(is.na(x[, i]))
+    missing_prop[i] <- missing[i] / nrow(x)
+  }
+  (missing_data <- data.frame(var = var, missing = missing, missing_prop = missing_prop) %>%
+      arrange(desc(missing_prop)))
+}
+missing_vars(full) #Call the function on full dataset
+#var missing missing_prop: Hence we must input the missing values
+#1               Claim    3069  0.300029328
+#2   Date_of_Occupancy    1236  0.120832926
+#3  Building.Dimension     119  0.011633591
+#4              Garden      11  0.001075374
+#5         Customer.Id       0  0.000000000
+#6   YearOfObservation       0  0.000000000
+#7      Insured_Period       0  0.000000000
+#8         Residential       0  0.000000000
+#9    Building_Painted       0  0.000000000
+#10    Building_Fenced       0  0.000000000
+#11         Settlement       0  0.000000000
+#12      Building_Type       0  0.000000000
+#13    NumberOfWindows       0  0.000000000
+#14           Geo_Code       0  0.000000000
+##15               key       0  0.000000000
+
+#Check Correlations of numeric columns
+corMatrix <- cor(full_num, use = "complete.obs", method="pearson")
+round(corMatrix, 2) #round to two decimals
+corrplot(cor(full_num), method = "circle")#correlation matricies package
+corrplot(corMatrix, method="circle") #Create a better visualization for the column correlation
+corrplot(corMatrix, method="square")
+corrplot(corMatrix, method="number")
+corrplot(corMatrix, method="shade")
+corrplot(corMatrix, type = "upper")
+corrplot.mixed(corMatrix)#Understand the correlation between columns
+#Visualizing numeric vriables-- Boxplots
+boxplot(full$Insured_Period, main = "Boxplot of Insured_period", ylab = "Insured per year")
+boxplot(full$Residential, main = "Boxplot of Insured_period", ylab = "Residential")
+boxplot(full$Building.Dimension, main = "Boxplot of Insured_period", ylab = "Building Dimension")
+# Run a histogram for all numeric variables to understand distribution
+#Creating histogram for all numeric variables
+hist(full$Insured_Period, main="Insured_Period per year", xlab="Insured_Period", breaks=7, col="lightblue")
+hist(full$Customer.Id, main="Customer_Id", xlab="Customer.Id", breaks=7, col="lightblue")
+hist(full$YearOfObservation, main="Years of Observation", xlab="YearofObs", breaks=7, col="lightblue")
+hist(full$Residential, main="Residential Address", xlab="Residential", breaks=7, col="lightblue")
+hist(full$Claim, main="Claim over the years", xlab="Insurance_Claim", breaks=7, col="lightblue")
+hist(full$NumberOfWindows, main="Number of Windows", xlab="Numbrof windows", breaks=7, col="lightblue")
+hist(full$Building_Type, main="Types of building", xlab="Building types", breaks=7, col="lightblue")
+hist(full$Building.Dimension, main="Dimension of Building", xlab="Building Dimension", breaks=7, col="lightblue")
+hist(full$Date_of_Occupancy, main="Date of Occupancy Per Year", xlab="Date of Occupancy", breaks=7, col="lightblue")
+hist(full$Geo_Code, main="Geographical Code", xlab="Geo_Code", breaks=7, col="lightblue")
+#relationship between the quality of diamonds and their price: low quality diamonds
+
+#Insured_Period, NumberOfWindows, Building.Dimension,  and Claiim, the target variable
+ggplot(full, aes(full$Insured_Period, full$Claim)) + geom_boxplot()
+ggplot(full, aes(NumberOfWindows, Claim)) + geom_boxplot()
+ggplot(full, aes(Building.Dimension, Claim)) + geom_boxplot()
+
+#Create a boxplot to show the percentile distribution of Claim Insured_Period.
+boxplot(Claim~Insured_Period,data=full, main="Insurance_Data", #boxplot
+        xlab="Insured_Period", ylab="Claim", col="lightblue")
+ClaimBox_Insured <- ggplot(full, aes(y=Claim, x=Insured_Period))
+ClaimBox_Insured + geom_violin(trim=FALSE, fill="lightblue")#violin plot for Claim and Insured_Period
+ClaimBox <- ggplot(full, aes(y=Claim, x=Geo_Code))
+ClaimBox + geom_violin(trim=FALSE, fill="lightblue")#violin plot for Claim and Geo_Code
+
+#Exploring Categorical variables
+table(full_cat$Claim)
+#0(No Claim)   1 (Claim)
+#5526         1634
+table(full_cat$Building_Painted)
+#1    0
+#3163 7066
+table(full_cat$Building_Fenced)
+# 1    0
+#4437 5792
+table(full_cat$Settlement)
+#1    0
+#4439 5790
+prop.table(table(full_cat$Claim))
+#No Claim     Claim
+#0.7717877 0.2282123  About 77 % is no claim, while about 23% is claim
+#Visualizing relationships -- Scatterplots
+plot(x = full$Building.Dimension, y = full$Claim,
+     main = "Scatterplot of Claim over an Insured_Period", xlab = "Insured Period in years",
+     ylab = "Amount of Claim recorded")
+library(psych)
+library(cluster)
+describe(full) #Describe the full dataset
+#                   vars     n    mean      sd median trimmed     mad  min   max range  skew kurtosis
+#Customer.Id*          1 10229 5115.00 2953.00   5115 5115.00 3791.01    1 10229 10228  0.00    -1.20
+#YearOfObservation     2 10229 2013.65    1.38   2013 2013.56    1.48 2012  2016     4  0.36    -1.12
+#Insured_Period        3 10229    0.91    0.23      1    0.99    0.00    0     1     1 -2.80     6.68
+#Residential           4 10229    0.28    0.45      0    0.23    0.00    0     1     1  0.97    -1.05
+#Building_Painted*     5 10229    1.69    0.46      2    1.74    0.00    1     2     1 -0.83    -1.32
+#Building_Fenced*      6 10229    1.57    0.50      2    1.58    0.00    1     2     1 -0.27    -1.93
+#Garden*               7 10218    1.43    0.50      1    1.42    0.00    1     2     1  0.27    -1.93
+#Settlement*           8 10229    1.57    0.50      2    1.58    0.00    1     2     1 -0.27    -1.93
+#Building.Dimension    9 10110 1818.15 2272.11   1002 1346.53  892.53    1 30745 30744  3.46    18.12
+#Building_Type        10 10229    2.24    0.96      2    2.17    1.48    1     4     3  0.51    -0.65
+#Date_of_Occupancy    11  8993 1965.06   33.55   1970 1969.33   14.83 1545  2016   471 -3.18    22.16
+#NumberOfWindows*     12 10229    3.24    2.80      1    2.85    0.00    1    11    10  0.76    -0.79
+#Geo_Code*            13 10229  453.62  374.41    374  400.85  343.96    1  1526  1525  1.08     0.61
+#key*                 14 10229     NaN      NA     NA     NaN      NA  Inf  -Inf  -Inf    NA       NA
+#Claim                15  7160    0.23    0.42      0    0.16    0.00    0     1     1  1.29    -0.32
+#se
+#Customer.Id*       29.20
+#YearOfObservation   0.01
+#Insured_Period      0.00
+#Residential         0.00
+#Building_Painted*   0.00
+#Building_Fenced*    0.00
+#Garden*             0.00
+#Settlement*         0.00
+#Building.Dimension 22.60
+#Building_Type       0.01
+#Date_of_Occupancy   0.35
+#NumberOfWindows*    0.03
+#Geo_Code*           3.70
+#key*                  NA
+#Claim               0.00
+describeBy(full, group = "Claim")
+# Descriptive statistics by group
+#group: 0
+#vars    n    mean      sd median trimmed     mad  min   max range  skew kurtosis
+#Customer.Id*          1 5526 6683.49 2083.21 6731.5 6690.61 2698.33 3070 10229  7159 -0.03    -1.22
+#YearOfObservation     2 5526 2013.68    1.39 2013.0 2013.60    1.48 2012  2016     4  0.34    -1.16
+#Insured_Period        3 5526    0.90    0.25    1.0    0.97    0.00    0     1     1 -2.52     5.03
+#Residential           4 5526    0.29    0.45    0.0    0.24    0.00    0     1     1  0.93    -1.14
+#Building_Painted*     5 5526    1.74    0.44    2.0    1.81    0.00    1     2     1 -1.12    -0.74
+#Building_Fenced*      6 5526    1.51    0.50    2.0    1.51    0.00    1     2     1 -0.04    -2.00
+#Garden*               7 5521    1.49    0.50    1.0    1.49    0.00    1     2     1  0.04    -2.00
+#Settlement*           8 5526    1.51    0.50    2.0    1.51    0.00    1     2     1 -0.04    -2.00
+#Building.Dimension    9 5439 1514.95 1758.85  900.0 1164.36  759.09    1 20818 20817  3.46    18.78
+#Building_Type        10 5526    2.13    0.92    2.0    2.04    1.48    1     4     3  0.59    -0.39
+#Date_of_Occupancy    11 5120 1964.08   36.88 1965.0 1968.73   22.24 1545  2016   471 -3.28    22.37
+#NumberOfWindows*     12 5526    3.43    2.72    1.0    3.12    0.00    1    11    10  0.56    -1.01
+#Geo_Code*            13 5526  518.72  417.61  416.0  473.18  391.41    1  1526  1525  0.78    -0.34
+#key*                 14 5526     NaN      NA     NA     NaN      NA  Inf  -Inf  -Inf    NA       NA
+#Claim                15 5526    0.00    0.00    0.0    0.00    0.00    0     0     0   NaN      NaN
+#se
+#Customer.Id*       28.02
+#YearOfObservation   0.02
+#Insured_Period      0.00
+#Residential         0.01
+#Building_Painted*   0.01
+#Building_Fenced*    0.01
+#Garden*             0.01
+#Settlement*         0.01
+#Building.Dimension 23.85
+#Building_Type       0.01
+#Date_of_Occupancy   0.52
+#NumberOfWindows*    0.04
+#Geo_Code*           5.62
+#key*                  NA
+#Claim               0.00
+-----------------------------------------------------------------------------
+ # group: 1
+#vars    n    mean      sd median trimmed     mad  min   max range  skew kurtosis
+#Customer.Id*          1 1634 6534.54 2007.85 6367.5 6511.46 2508.56 3079 10226  7147  0.10    -1.12
+#YearOfObservation     2 1634 2013.63    1.35 2013.0 2013.54    1.48 2012  2016     4  0.39    -1.04
+#Insured_Period        3 1634    0.95    0.18    1.0    1.00    0.00    0     1     1 -4.01    16.04
+#Residential           4 1634    0.36    0.48    0.0    0.32    0.00    0     1     1  0.59    -1.66
+#Building_Painted*     5 1634    1.78    0.42    2.0    1.84    0.00    1     2     1 -1.32    -0.26
+#Building_Fenced*      6 1634    1.45    0.50    1.0    1.44    0.00    1     2     1  0.21    -1.96
+#Garden*               7 1632    1.55    0.50    2.0    1.56    0.00    1     2     1 -0.21    -1.96
+#Settlement*           8 1634    1.45    0.50    1.0    1.44    0.00    1     2     1  0.21    -1.96
+#Building.Dimension    9 1615 3125.70 3202.34 2000.0 2508.53 1960.00  100 20940 20840  2.12     5.33
+#Building_Type        10 1634    2.38    0.99    2.0    2.35    1.48    1     4     3  0.34    -0.93
+#Date_of_Occupancy    11 1532 1965.72   32.89 1970.0 1970.05   14.83 1613  2014   401 -2.54    14.54
+#NumberOfWindows*     12 1634    4.15    3.19    5.0    3.86    5.93    1    11    10  0.34    -1.34
+#Geo_Code*            13 1634  507.30  396.30  447.5  460.32  338.77    1  1525  1524  0.91     0.08
+#key*                 14 1634     NaN      NA     NA     NaN      NA  Inf  -Inf  -Inf    NA       NA
+#Claim                15 1634    1.00    0.00    1.0    1.00    0.00    1     1     0   NaN      NaN
+#se
+#Customer.Id*       49.67
+#YearOfObservation   0.03
+#Insured_Period      0.00
+#Residential         0.01
+#Building_Painted*   0.01
+#Building_Fenced*    0.01
+#Garden*             0.01
+#Settlement*         0.01
+#Building.Dimension 79.69
+#Building_Type       0.02
+#Date_of_Occupancy   0.84
+#NumberOfWindows*    0.08
+#Geo_Code*           9.80
+#key*                  NA
+#Claim               0.00
+#Normalizing the data
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+normalize(full_num)
+CrossTable(x = full$Insured_Period, y = full$Claim)
+#Cell Contents
+#|-------------------------|
+#  |                       N |
+#  | Chi-square contribution |
+#  |           N / Row Total |
+#  |           N / Col Total |
+# |         N / Table Total |
+#  |-------------------------|
+
+
+ # Total Observations in Table:  7160
+
+
+#                   | full$Claim
+#full$Insured_Period |         0 |         1 | Row Total |
+ # --------------------|-----------|-----------|-----------|
+  #0 |   1502        333   |      1835 |
+#  |     5.194 |    17.567 |           |
+#  |     0.819 |     0.181 |     0.256 |
+#  |     0.272 |     0.204 |           |
+#  |     0.210 |     0.047 |           |
+#  --------------------|-----------|-----------|-----------|
+#  1 |      4024 |      1301 |      5325 |
+#  |     1.790 |     6.054 |           |
+#  |     0.756 |     0.244 |     0.744 |
+#  |     0.728 |     0.796 |           |
+#  |     0.562 |     0.182 |           |
+#  --------------------|-----------|-----------|-----------|
+#  Column Total |      5526 |      1634 |      7160 |
+#  |     0.772 |     0.228 |           |
+#  --------------------|-----------|-----------|-----------|
+#DEALING WITH MISSING VALUES IN EDA (FILLING IN MISSING VALUES)
+#
+data("full", package = "mlbench")  # initialize the data  # load the data
+original <- full  # backup original data
+library(mice)
+md.pattern(full)  # pattern or missing values in data.
+#Customer.Id YearOfObservation Insured_Period Residential Building_Painted Building_Fenced
+#6543           1                 1              1           1                1               1
+#2324           1                 1              1           1                1               1
+#504            1                 1              1           1                1               1
+#728            1                 1              1           1                1               1
+#102            1                 1              1           1                1               1
+#13             1                 1              1           1                1               1
+#4              1                 1              1           1                1               1
+#7              1                 1              1           1                1               1
+#4              1                 1              1           1                1               1
+#0                 0              0           0                0               0
+#Settlement Building_Type NumberOfWindows Geo_Code key Garden Building.Dimension Date_of_Occupancy
+#6543          1             1               1        1   1      1                  1                 1
+#2324          1             1               1        1   1      1                  1                 1
+#504           1             1               1        1   1      1                  1                 0
+#728           1             1               1        1   1      1                  1                 0
+#102           1             1               1        1   1      1                  0                 1
+#13            1             1               1        1   1      1                  0                 1
+#4             1             1               1        1   1      1                  0                 0
+#7             1             1               1        1   1      0                  1                 1
+#4             1             1               1        1   1      0                  1                 1
+#0             0               0        0   0     11                119              1236
+#Claim
+#6543     1    0
+#2324     0    1
+#504      1    1
+#728      0    2
+#102      1    1
+#13       0    2
+#4        1    2
+#7        1    1
+#4        0    2
+#3069 4435
+library(Hmisc)
+impute(full$Claim, mean)  # replace with mean
+impute(full$Claim, median)  # median
+#impute(full$ptratio, 20)  # replace specific number
+impute(full$Garden, mean)  # replace with mean
+impute(full$Garden, median)  # median
+impute(full$Building.Dimension, mean)  # replace with mean
+impute(full$Building.Dimension, median)  # median
+impute(full$Date_of_Occupancy, mean)  # replace with mean
+impute(full$Date_of_Occupancy, median)  # median
+
+# or if you want to impute manually
+#full$Claim[is.na(full$Claim)] <- mean(full$Claim, na.rm = T)  # not run
+install.packages("DMwR")
+library(DMwR)
+actuals <- full$Claim[is.na(full$Claim)]
+predicteds <- rep(mean(full$Claim, na.rm=T), length(actuals))
+regr.eval(actuals, predicteds)
+library(DMwR)
+knnOutput <- knnImputation(full[, !names(full) %in% "Claim"])  # perform knn imputation.
+anyNA(knnOutput)
+actuals <- original$ptratio[is.na(full$Claim)]
+predicteds <- knnOutput[is.na(full$Claim), "Claim"]
+regr.eval(actuals, predicteds)
+
+library(rpart)
+class_mod <- rpart(Garden ~ . - Insured_Period, data = full[!is.na(full$Garden), ],
+                   method = "class", na.action = na.omit)  # since Garden is a factor
+anova_mod <- rpart(Claim ~ . - Insured_Period, data = full[!is.na(full$Claim), ],
+                   method = "anova", na.action = na.omit)  # since ptratio is numeric.
+Garden_pred <- predict(class_mod, full[is.na(full$Garden), ])
+Claim_pred <- predict(anova_mod, full[is.na(full$Claim), ])
+#Lets compute the accuracy for claim
+
+actuals <- original$Claim[is.na(full$Claim)]
+predicteds <- Claim_pred
+regr.eval(actuals, predicteds)
+
+actuals <- original$rad[is.na(full$Claim)]
+predicteds <- as.numeric(colnames(Claim_pred)[apply(Claim_pred, 1, which.max)])
+mean(actuals != predicteds)  # compute misclass error.
+
+library(mice) #Imputing missing values
+#miceMod <- mice(full_num[, !names(full_num) %in% "medv"], method="rf")  # perform mice imputation, based on random forests.
+#miceOutput <- complete(miceMod)  # generate the completed data.
+#anyNA(miceOutput)
+miceMod <- mice(full_num, m = 5, maxit = 50, method = 'pmm', seed = 500)
+summary(miceMod)
+miceOutput <- complete(miceMod)  # generate the completed data.
+anyNA(miceOutput)
+miceMod2 <- mice(full_cat, m = 5, maxit = 50, method = NULL, seed = NA)
+summary(miceMod2)
+miceOutput2 <- complete(miceMod2)  # generate the completed data.
+anyNA(miceOutput2)
+miceMod$data
+
+actuals <- original$Claim[is.na(full$Claim)]
+predicteds <- miceOutput[is.na(full$Claim), "Claim"]
+regr.eval(actuals, predicteds)
+
+#Split data set into training and testing
+#Create train and test data sets
+
+library(dplyr)
+full_inputed <- cbind(miceOutput2, miceOutput) #Join by rows == bind_rows(Test, train)
+
+#Splitting imputed data into test and train datasets using the key
+train_inp <- full_inputed[0:7160,] #X_train
+test_inp <- full_inputed[7161:10229,]  #X_test
+
+target_v <- full_inputed$Claim #y(outcome, predicted variable)
+trainingOutcomes.num <- target_v[0:7160] #numeric y_train
+testOutcomes.num <- target_v[7161:10229] #numeric y_test
+trainingOutcomes <- as.factor(train_inp$Claim) #y_train
+testOutcomes <- as.factor(test_inp$Claim) #y_test
+levels(testOutcomes)
+#Setting Claim(Target/Outcome Variable to NULL)
+train_inp$Claim <- NULL
+test_inp$Claim <- NULL
+#full$key <- NULL #Deleting the variable key from the full_df
+summary(full[c("Claim", "Insured_Period", "Building_Type")])
+
+#Saving data
+save(list = c("full_inputed", "train_inp","test_inp", "target_v", "miceOutput","miceOutput2",
+              "test","train", "full", "Submission.Id"),
+     file = "full.Rdata")#saving train and test data as full_data
+data(full.Rdata)
+
+#MOdel
+mymodel <- glm(trainingOutcomes ~ ., family = "binomial",  data = train_inp)
+summary(mymodel)
+anova(mymodel)
+effects(mymodel)
+fitted.values(mymodel)
+residuals(mymodel)
+#Run the test
+attach(test)
+pred <- predict(mymodel, newdata = test, type = 'response')
+summary(pred)
+pred = ifelse(pred > .5, 1, 0)
+pred = as.dataframe(y = pred)
+
+#Saving predicted variable and Submission.Id
+Submission.file <- cbind(pred, Submission.Id)
+write.csv(Submission.file,'Submission.file.csv') # Use the 'write.csv( )' command to save the file:
+#The first argument (Submission.file) is the name of the dataframe in R, and the second argument
+#in quotes is the name to be given the .csv file saved on your computer.
+
+table(pred, testOutcomes)
+#pred No Claim Claim
+#0     1835     0
+#1        0   357
+#Validate the model -- confusion matrix (for test)
+confmatrix_test <- table(Actual_val = testOutcomes, predicted_value = pred > 0.5)
+confmatrix_test
+#predicted_value
+#Actual_val FALSE TRUE
+#No Claim  1835    0
+#Claim        0  357
+##correct predictions
+#(#1835 were predicted false and are actually false)
+#(357 were predicted true and are actually true)
+#incorrect predictions
+#(0 were predicted true, but were actually false, 0 were false, but were actually true)
+(confmatrix_test[[1,1]] + confmatrix_test[[2,2]]) / sum(confmatrix_test)
+#0.8343978
