@@ -122,7 +122,7 @@ test$key <- "Test"
 
 
 #Part 2: Colllecing, Preparing and Cleaning Data.
-#Makinf full data
+#Making full data
 library(dplyr)
 full <- full_join(test, train) #Joined by columns OR
 full <- bind_rows(train, test) #Join by rows == bind_rows(Test, train)
