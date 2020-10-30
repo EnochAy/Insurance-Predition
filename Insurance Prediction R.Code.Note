@@ -121,12 +121,12 @@ test$key <- "Test"
 #or 0, if the building doesn't have a claim over the insured period, no claim)
 
 
-#Part 2: Colllecing, Preparing and Cleaning Data.
+#Part 2: Collecting, Preparing and Cleaning Data.
 #Making full data
 library(dplyr)
 full <- full_join(test, train) #Joined by columns OR
 full <- bind_rows(train, test) #Join by rows == bind_rows(Test, train)
-save(list = c("test","train", "full", "Submission.Id"),file = "full.Rdata")#saving train and test data as full_data
+save(list = c("test","train", "full", "Submission.Id"),file = "full.Rdata")#saving train and test data as full
 data(full.Rdata)
 
 #INITIAL EXPLORATORY DATA ANALYSIS FOR BETTER UNDERSTANDING OF THE DATA
